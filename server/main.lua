@@ -1,3 +1,37 @@
+local function registerSzCoreCallback(name, fn)
+    CreateThread(function()
+        local deadline = GetGameTimer() + 15000
+
+        while GetGameTimer() < deadline do
+            if GetResourceState('szcore') == 'started' then
+                local ok, success, err = pcall(function()
+                    return registerSzCoreCallback(name, fn)
+                end)
+
+                if ok and success ~= false then
+                    return
+                end
+
+                if ok and success == false then
+                    print(('[%s] SzCore callback registration rejected: %s (%s)'):format(
+                        GetCurrentResourceName(),
+                        tostring(name),
+                        tostring(err)
+                    ))
+                    return
+                end
+            end
+
+            Wait(100)
+        end
+
+        print(('[%s] SzCore callback registration timed out: %s'):format(
+            GetCurrentResourceName(),
+            tostring(name)
+        ))
+    end)
+end
+
 local rate={}
 local function perm(src,p)return exports.szcore:HasPermission(src,p)end
 local function player(src)return exports.szcore:GetPlayer(tonumber(src))end
@@ -36,7 +70,7 @@ local function action(src,a,d)
     end
     return false,'invalid_action'
 end
-exports.szcore:CreateCallback('szcore_admin:dashboard',dashboard);exports.szcore:CreateCallback('szcore_admin:action',action)
+registerSzCoreCallback('szcore_admin:dashboard',dashboard);registerSzCoreCallback('szcore_admin:action',action)
 exports.szcore:RegisterCommand({name='szcoreinfo',permission='admin.view',arguments={}},function(src)local m=exports.szcore:GetMetrics();notify(src,('Players: %d | Saves: %d | Batch: %d | Callbacks: %d | Events: %d'):format(exports.szcore:GetPlayerCount(),m.saves or 0,m.batchSaves or 0,m.callbacks or 0,m.secureEvents or 0))end)
 exports.szcore:RegisterCommand({name='setjob',permission='admin.job',arguments={{name='player',type='player'},{name='job',type='job'},{name='grade',type='number'}}},function(src,a)local ok,err=exports.szcore:SetJob(a.player,a.job,a.grade,true);notify(src,ok and'Job módosítva.'or tostring(err),ok and'success'or'error')end)
 exports.szcore:RegisterCommand({name='setgang',permission='admin.job',arguments={{name='player',type='player'},{name='gang',type='gang'},{name='grade',type='number'}}},function(src,a)local ok,err=exports.szcore:SetGang(a.player,a.gang,a.grade);notify(src,ok and'Gang módosítva.'or tostring(err),ok and'success'or'error')end)
